@@ -1,0 +1,220 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  hashedPassword    String?
+  subscriptionTier  SubscriptionTier @default(FREE)
+  creditsRemaining  Int       @default(10)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  prompts           Prompt[]
+  imageGenerations  ImageGeneration[]
+  collections       UserCollection[]
+  templates         PromptTemplate[]
+  
+  @@map("users")
+}
+
+model Prompt {
+  id                String    @id @default(cuid())
+  userId            String
+  originalInput     String
+  enhancedPrompt    String
+  category          PromptCategory
+  stylePreferences  Json?
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageGenerations  ImageGeneration[]
+  
+  @@index([userId, createdAt])
+  @@index([category])
+  @@map("prompts")
+}
+
+model ImageGeneration {
+  id                String    @id @default(cuid())
+  promptId          String
+  userId            String
+  provider          ImageProvider
+  status            GenerationStatus @default(QUEUED)
+  imageUrl          String?
+  thumbnailUrl      String?
+  generationTimeMs  Int?
+  costCents         Int       @default(0)
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+  
+  // Relations
+  prompt            Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionImages  CollectionImage[]
+  
+  @@index([status])
+  @@index([userId, createdAt])
+  @@index([promptId, provider])
+  @@map("image_generations")
+}
+
+model UserCollection {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images      CollectionImage[]
+  
+  @@index([userId])
+  @@index([isPublic])
+  @@map("user_collections")
+}
+
+model CollectionImage {
+  collectionId String
+  imageId      String
+  addedAt      DateTime @default(now())
+  
+  // Relations
+  collection   UserCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  image        ImageGeneration @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  @@id([collectionId, imageId])
+  @@map("collection_images")
+}
+
+model PromptTemplate {
+  id                String    @id @default(cuid())
+  name              String
+  category          PromptCategory
+  description       String?
+  baseStructure     String
+  enhancementRules  Json?
+  providerAdaptations Json?
+  isPublic          Boolean   @default(false)
+  usageCount        Int       @default(0)
+  createdBy         String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  creator           User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@index([category])
+  @@index([isPublic])
+  @@index([usageCount])
+  @@map("prompt_templates")
+}
+
+model QueueJob {
+  id          String    @id @default(cuid())
+  type        JobType
+  data        Json
+  priority    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  status      JobStatus @default(PENDING)
+  delay       Int?
+  processedAt DateTime?
+  failedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([status, priority])
+  @@index([type])
+  @@map("queue_jobs")
+}
+
+model ApiUsage {
+  id            String    @id @default(cuid())
+  userId        String?
+  endpoint      String
+  method        String
+  statusCode    Int
+  responseTime  Int
+  requestSize   Int?
+  responseSize  Int?
+  userAgent     String?
+  ipAddress     String?
+  createdAt     DateTime  @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([endpoint, createdAt])
+  @@map("api_usage")
+}
+
+// Enums
+enum SubscriptionTier {
+  FREE
+  PRO
+  ENTERPRISE
+  
+  @@map("subscription_tier")
+}
+
+enum PromptCategory {
+  PORTRAIT
+  LANDSCAPE
+  CONCEPT
+  PRODUCT
+  ARCHITECTURE
+  ABSTRACT
+  ANIME
+  REALISTIC
+  
+  @@map("prompt_category")
+}
+
+enum ImageProvider {
+  DALLE_E3
+  IMAGEN_4
+  STABLE_DIFFUSION
+  
+  @@map("image_provider")
+}
+
+enum GenerationStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  
+  @@map("generation_status")
+}
+
+enum JobType {
+  IMAGE_GENERATION
+  PROMPT_ENHANCEMENT
+  IMAGE_PROCESSING
+  
+  @@map("job_type")
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYING
+  
+  @@map("job_status")
+}

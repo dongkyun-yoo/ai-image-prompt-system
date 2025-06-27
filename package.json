@@ -1,0 +1,16 @@
+{
+  "name": "ai-image-prompt-system",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI Image Prompt System - Multi-provider image generation with intelligent prompt enhancement",
+  "scripts": {
+    "test:prompt": "node simple-prompt-test.js",
+    "test:prompt-full": "node test-prompt-engine.js",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["ai", "image-generation", "prompt", "dalle", "imagen", "stable-diffusion"],
+  "author": "Claude Code",
+  "license": "MIT"
+}
